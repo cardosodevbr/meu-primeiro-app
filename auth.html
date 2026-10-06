@@ -4,56 +4,87 @@
     <meta charset="UTF-8">
     <title>Acesso</title>
     <link rel="stylesheet" href="style.css">
-    <!-- ⚠️ IMPORTANTE: A URL oficial do Supabase -->
+    <!-- Importação da biblioteca do Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div class="container">
         <h2>Acesse sua conta</h2>
         <input type="email" id="email" placeholder="Seu E-mail" required>
-        <input type="password" id="senha" placeholder="Sua Senha" required>
-        <button onclick="fazerAcesso()">Continuar</button>
+        <input type="password" id="senha" placeholder="Sua Senha (mínimo 6 caracteres)" required>
+        
+        <!-- Botão exclusivo para Login -->
+        <button onclick="fazerLogin()">Entrar</button>
+        
+        <!-- Botão exclusivo para Cadastro -->
+        <button onclick="fazerCadastro()" style="background-color: #28a745; margin-top: 10px;">Criar Nova Conta</button>
+        
         <p id="mensagem" style="color: #666; margin-top: 10px;"></p>
     </div>
 
+    <!-- Importa as chaves de conexão -->
     <script src="supabase-config.js"></script>
+    
     <script>
-        async function fazerAcesso() {
+        // Função 1: Apenas entra na conta
+        async function fazerLogin() {
             const email = document.getElementById('email').value;
             const senha = document.getElementById('senha').value;
             const msg = document.getElementById('mensagem');
             
             if(!email || !senha) {
-                msg.innerText = "Preencha e-mail e senha!";
                 msg.style.color = "red";
+                msg.innerText = "Preencha e-mail e senha!";
                 return;
             }
 
             msg.style.color = "#0070f3";
-            msg.innerText = "Processando...";
+            msg.innerText = "Processando login...";
 
-            let { data, error } = await supabase.auth.signInWithPassword({ email, password: senha });
+            // Tenta logar
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha });
 
             if (error) {
-                if (error.message.includes('Invalid login credentials')) {
-                    msg.innerText = "Conta não encontrada. Criando nova...";
-                    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password: senha });
-                    
-                    if (signUpError) {
-                        msg.style.color = "red";
-                        msg.innerText = "Erro ao criar: " + signUpError.message;
-                        return;
-                    }
-                    msg.style.color = "green";
-                    msg.innerText = "Conta criada! Entrando...";
-                    window.location.replace('dashboard.html');
-                } else {
-                    msg.style.color = "red";
-                    msg.innerText = "Erro: " + error.message;
-                }
+                // Se der erro, mostra exatamente qual foi o problema
+                msg.style.color = "red";
+                msg.innerText = "Erro ao entrar: " + error.message;
             } else {
                 msg.style.color = "green";
-                msg.innerText = "Login feito! Entrando...";
+                msg.innerText = "Login realizado! Entrando...";
+                window.location.replace('dashboard.html');
+            }
+        }
+
+        // Função 2: Apenas cria a conta
+        async function fazerCadastro() {
+            const email = document.getElementById('email').value;
+            const senha = document.getElementById('senha').value;
+            const msg = document.getElementById('mensagem');
+            
+            if(!email || !senha) {
+                msg.style.color = "red";
+                msg.innerText = "Preencha e-mail e senha!";
+                return;
+            }
+
+            if(senha.length < 6) {
+                msg.style.color = "red";
+                msg.innerText = "A senha deve ter pelo menos 6 caracteres!";
+                return;
+            }
+
+            msg.style.color = "#28a745";
+            msg.innerText = "Processando cadastro...";
+
+            // Tenta criar a conta
+            const { data, error } = await supabase.auth.signUp({ email, password: senha });
+
+            if (error) {
+                msg.style.color = "red";
+                msg.innerText = "Erro ao criar: " + error.message;
+            } else {
+                msg.style.color = "green";
+                msg.innerText = "Conta criada com sucesso! Entrando...";
                 window.location.replace('dashboard.html');
             }
         }
