@@ -208,4 +208,23 @@
         }
 
         async function excluirConta() {
-            const confirmar = confirm("Tem certeza? Esta ação apagará sua
+            const confirmar = confirm("Tem certeza? Esta ação apagará sua conta e dados permanentemente.");
+            if (!confirmar) return;
+            try {
+                await clienteSupabase.storage.from('avatars').remove([`${usuarioAtual.id}`]);
+                await clienteSupabase.from('profiles').delete().eq('id', usuarioAtual.id);
+                await clienteSupabase.rpc('excluir_minha_conta');
+                await clienteSupabase.auth.signOut();
+                window.location.replace('auth.html');
+            } catch (erro) {
+                alert("Erro ao excluir conta: " + erro.message);
+            }
+        }
+
+        async function sair() {
+            await clienteSupabase.auth.signOut();
+            window.location.replace('auth.html');
+        }
+    </script>
+</body>
+</html>
