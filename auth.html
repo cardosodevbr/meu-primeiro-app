@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Acesso</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- 1. Importa a ferramenta do Supabase direto da internet -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="container">
+        <h2>Acesse sua conta</h2>
+        <input type="email" id="email" placeholder="Seu E-mail" required>
+        <input type="password" id="senha" placeholder="Sua Senha" required>
+        <button onclick="fazerAcesso()">Continuar</button>
+        <p id="mensagem" style="color: red;"></p>
+    </div>
+
+    <!-- 2. Importa nossas configurações e a lógica do app -->
+    <script src="supabase-config.js"></script>
+    <script>
+        async function fazerAcesso() {
+            const email = document.getElementById('email').value;
+            const senha = document.getElementById('senha').value;
+            const msg = document.getElementById('mensagem');
+
+            // Tenta fazer login primeiro
+            let { data, error } = await supabase.auth.signInWithPassword({ email, password: senha });
+
+            if (error) {
+                // Se der erro (ex: usuário não existe), tenta cadastrar
+                if (error.message.includes('Invalid login credentials')) {
+                    msg.innerText = "Conta não encontrada. Criando nova conta...";
+                    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password: senha });
+                    
+                    if (signUpError) {
+                        msg.innerText = "Erro ao criar: " + signUpError.message;
+                        return;
+                    }
+                    // Cadastro feito com sucesso
+                    window.location.href = 'dashboard.html';
+                } else {
+                    msg.innerText = "Erro: " + error.message;
+                }
+            } else {
+                // Login com sucesso
+                window.location.href = 'dashboard.html';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Seu Painel</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="container" id="conteudo">
+        <h2 id="saudacao">Carregando...</h2>
+        
+        <!-- Área de exibição do perfil concluído (escondida no início) -->
+        <div id="perfil-completo" style="display: none;">
+            <img id="foto-exibicao" src="" width="150" style="border-radius: 50%;">
+            <h3 id="nome-exibicao"></h3>
+            <p id="cidade-exibicao"></p>
+        </div>
+
+        <!-- Formulário para completar o cadastro -->
+        <div id="form-perfil">
+            <h3>Complete seu cadastro</h3>
+            <input type="text" id="nome" placeholder="Seu Nome">
+            <select id="cidade">
+                <option value="">Selecione sua cidade</option>
+                <option value="Praia Grande">Praia Grande</option>
+                <option value="São Paulo">São Paulo</option>
+                <option value="Santos">Santos</option>
+            </select>
+            <input type="file" id="foto" accept="image/*">
+            <button onclick="salvarPerfil()">Salvar Perfil</button>
+        </div>
+    </div>
+
+    <script src="supabase-config.js"></script>
+    <script>
+        let usuarioAtual = null;
+
+        // 1. Verifica quem está logado logo que a página abre
+        window.onload = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                window.location.href = 'auth.html'; // Expulsa se não estiver logado
+                return;
+            }
+            usuarioAtual = user;
+            document.getElementById('saudacao').innerText = `Olá, ${user.email}`;
+            
+            // Tenta buscar se o usuário já tem perfil salvo
+            carregarPerfil(user.id);
+        };
+
+        // 2. Busca dados na tabela profiles
+        async function carregarPerfil(userId) {
+            const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+            
+            if (data && data.nome) {
+                // Se achou os dados, esconde o form e mostra o perfil
+                document.getElementById('form-perfil').style.display = 'none';
+                document.getElementById('perfil-completo').style.display = 'block';
+                
+                document.getElementById('nome-exibicao').innerText = data.nome;
+                document.getElementById('cidade-exibicao').innerText = data.cidade;
+                document.getElementById('saudacao').innerText = `Olá, ${data.nome}!`;
+                
+                if (data.avatar_url) {
+                    document.getElementById('foto-exibicao').src = data.avatar_url;
+                }
+            }
+        }
+
+        // 3. Salva foto, nome e cidade
+        async function salvarPerfil() {
+            const nome = document.getElementById('nome').value;
+            const cidade = document.getElementById('cidade').value;
+            const arquivoFoto = document.getElementById('foto').files[0];
+            let urlFoto = null;
+
+            if (!nome || !cidade) return alert("Preencha nome e cidade!");
+
+            // Se selecionou foto, faz upload pro Supabase Storage
+            if (arquivoFoto) {
+                const caminho = `${usuarioAtual.id}/${arquivoFoto.name}`;
+                const { data: imgData, error: imgError } = await supabase.storage.from('avatars').upload(cidade, arquivoFoto, { upsert: true });
+                
+                if (!imgError) {
+                    // Pega o link público da foto que acabamos de subir
+                    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(caminho);
+                    urlFoto = publicUrl;
+                }
+            }
+
+            // Salva no Banco de Dados
+            const { error } = await supabase.from('profiles').upsert({
+                id: usuarioAtual.id, // O ID deve ser o mesmo da autenticação
+                nome: nome,
+                cidade: cidade,
+                avatar_url: urlFoto
+            });
+
+            if (error) alert("Erro ao salvar: " + error.message);
+            else {
+                alert("Perfil atualizado!");
+                carregarPerfil(usuarioAtual.id); // Atualiza a tela
+            }
+        }
+    </script>
+</body>
+</html>
