@@ -2,79 +2,111 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Acesso</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <div class="container">
-        <h2>Acesse sua conta</h2>
-        <input type="email" id="email" placeholder="Seu E-mail" required>
-        <input type="password" id="senha" placeholder="Sua Senha (mínimo 6 caracteres)" required>
+    <div class="container auth-container">
         
-        <button onclick="fazerLogin()">Entrar</button>
-        <button onclick="fazerCadastro()" style="background-color: #28a745; margin-top: 10px;">Criar Nova Conta</button>
-        
-        <p id="mensagem" style="color: #666; margin-top: 10px;"></p>
+        <!-- Lado Azul: Mensagem Institucional -->
+        <div class="auth-panel auth-left">
+            <h2 id="painel-titulo">Bem-vindo de volta!</h2>
+            <p id="painel-texto">Para se manter conectado conosco, faça login com suas informações pessoais.</p>
+            <button class="btn-outline" id="btn-trocar" onclick="alternarModo()">Entrar</button>
+        </div>
+
+        <!-- Lado Branco: Formulário Interativo -->
+        <div class="auth-panel auth-right">
+            <h2 id="form-titulo">Criar Conta</h2>
+            <p id="form-subtitulo">use seu e-mail para registro:</p>
+            
+            <input type="email" id="email" placeholder="Seu E-mail" required>
+            <input type="password" id="senha" placeholder="Sua Senha" required>
+            
+            <button class="btn-solid" id="btn-acao" onclick="executarAcao()">Cadastrar</button>
+            <p id="mensagem" style="margin-top: 15px; font-size: 14px; font-weight: bold;"></p>
+        </div>
+
     </div>
 
+    <!-- Importação do Supabase configurado -->
     <script src="supabase-config.js"></script>
     
     <script>
-        async function fazerLogin() {
-            const email = document.getElementById('email').value;
-            const senha = document.getElementById('senha').value;
-            const msg = document.getElementById('mensagem');
+        // A página nasce no modo "Criar Conta" para imitar o design de referência
+        let modoLogin = false; 
+
+        // Alterna visualmente entre Cadastro e Login
+        function alternarModo() {
+            modoLogin = !modoLogin;
             
-            if(!email || !senha) return msg.innerText = "Preencha e-mail e senha!";
+            const msg = document.getElementById('mensagem');
+            msg.innerText = ""; // Limpa erros antigos ao trocar de tela
+            document.getElementById('senha').value = ""; // Limpa a senha por segurança
 
-            msg.style.color = "#0070f3";
-            msg.innerText = "Processando login...";
-
-            try {
-                // Usa o clienteSupabase
-                const { data, error } = await clienteSupabase.auth.signInWithPassword({ email, password: senha });
-
-                if (error) {
-                    msg.style.color = "red";
-                    msg.innerText = "Erro ao entrar: " + error.message;
-                } else {
-                    msg.style.color = "green";
-                    msg.innerText = "Login realizado! Entrando...";
-                    window.location.replace('dashboard.html');
-                }
-            } catch (erroFatal) {
-                msg.style.color = "red";
-                msg.innerText = "Erro de sistema: " + erroFatal.message;
+            if (modoLogin) {
+                // Textos para estado de LOGIN
+                document.getElementById('painel-titulo').innerText = "Novo por aqui?";
+                document.getElementById('painel-texto').innerText = "Insira seus dados e comece sua jornada conosco.";
+                document.getElementById('btn-trocar').innerText = "Criar Conta";
+                
+                document.getElementById('form-titulo').innerText = "Entrar";
+                document.getElementById('form-subtitulo').innerText = "use seu e-mail e senha para acessar:";
+                document.getElementById('btn-acao').innerText = "Entrar";
+            } else {
+                // Textos para estado de CADASTRO
+                document.getElementById('painel-titulo').innerText = "Bem-vindo de volta!";
+                document.getElementById('painel-texto').innerText = "Para se manter conectado conosco, faça login com suas informações pessoais.";
+                document.getElementById('btn-trocar').innerText = "Entrar";
+                
+                document.getElementById('form-titulo').innerText = "Criar Conta";
+                document.getElementById('form-subtitulo').innerText = "use seu e-mail para registro:";
+                document.getElementById('btn-acao').innerText = "Cadastrar";
             }
         }
 
-        async function fazerCadastro() {
+        // Executa a função correta no Supabase baseada no estado da tela
+        async function executarAcao() {
             const email = document.getElementById('email').value;
             const senha = document.getElementById('senha').value;
             const msg = document.getElementById('mensagem');
             
-            if(!email || !senha) return msg.innerText = "Preencha e-mail e senha!";
-            if(senha.length < 6) return msg.innerText = "A senha deve ter pelo menos 6 caracteres!";
+            if(!email || !senha) {
+                msg.style.color = "red";
+                return msg.innerText = "Preencha e-mail e senha!";
+            }
 
-            msg.style.color = "#28a745";
-            msg.innerText = "Processando cadastro...";
+            msg.style.color = "#0070f3";
+            msg.innerText = "Processando...";
 
             try {
-                // Usa o clienteSupabase
-                const { data, error } = await clienteSupabase.auth.signUp({ email, password: senha });
-
-                if (error) {
-                    msg.style.color = "red";
-                    msg.innerText = "Erro ao criar: " + error.message;
-                } else {
+                if (modoLogin) {
+                    // Executa o LOGIN
+                    const { data, error } = await clienteSupabase.auth.signInWithPassword({ email, password: senha });
+                    if (error) throw error;
+                    
                     msg.style.color = "green";
-                    msg.innerText = "Conta criada com sucesso! Entrando...";
-                    window.location.replace('dashboard.html');
+                    msg.innerText = "Acesso liberado! Redirecionando...";
+                } else {
+                    // Executa o CADASTRO
+                    if(senha.length < 6) {
+                        msg.style.color = "red";
+                        return msg.innerText = "A senha deve ter pelo menos 6 caracteres!";
+                    }
+                    const { data, error } = await clienteSupabase.auth.signUp({ email, password: senha });
+                    if (error) throw error;
+                    
+                    msg.style.color = "green";
+                    msg.innerText = "Conta criada! Redirecionando...";
                 }
-            } catch (erroFatal) {
+                
+                window.location.replace('dashboard.html');
+
+            } catch (erro) {
                 msg.style.color = "red";
-                msg.innerText = "Erro de sistema: " + erroFatal.message;
+                msg.innerText = "Erro: " + erro.message;
             }
         }
     </script>
