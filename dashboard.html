@@ -2,32 +2,62 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Seu Painel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meu Dashboard</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body id="corpo-pagina" style="display: none;">
-    <div class="container">
-        <h2 id="saudacao">Carregando...</h2>
-        
-        <div id="perfil-completo" style="display: none;">
-            <img id="foto-exibicao" src="" width="150" style="border-radius: 50%;">
-            <h3 id="nome-exibicao"></h3>
-            <p id="cidade-exibicao"></p>
-            <button onclick="sair()" style="background-color: #dc3545; margin-top: 15px;">Sair / Fazer Logout</button>
+<body id="corpo-pagina" style="display: none; background-color: #f4f4f9;">
+    
+    <div class="dashboard-wrapper">
+        <!-- Capa -->
+        <div class="cover-image"></div>
+
+        <!-- Seção do Perfil -->
+        <div class="profile-section">
+            <div class="avatar-container">
+                <img id="foto-exibicao" src="https://via.placeholder.com/120" alt="Avatar">
+            </div>
+            <div class="profile-actions">
+                <button class="btn-edit" onclick="abrirEdicao()">Editar Perfil</button>
+                <button class="btn-danger" onclick="excluirConta()">Excluir Conta</button>
+                <button class="btn-edit" onclick="sair()">Sair</button>
+            </div>
         </div>
 
-        <div id="form-perfil">
-            <h3>Complete seu cadastro</h3>
-            <input type="text" id="nome" placeholder="Seu Nome">
-            <select id="cidade">
-                <option value="">Selecione sua cidade</option>
-                <option value="Praia Grande">Praia Grande</option>
-                <option value="São Paulo">São Paulo</option>
-                <option value="Santos">Santos</option>
-            </select>
-            <input type="file" id="foto" accept="image/*">
-            <button id="btn-salvar" onclick="salvarPerfil()">Salvar Perfil</button>
+        <!-- Conteúdo -->
+        <div class="dashboard-content">
+            <h1 id="nome-exibicao">Carregando...</h1>
+            
+            <div class="quote-box">
+                💡 "Esforce-se para não ser um sucesso, mas sim para ser valioso." - Albert Einstein
+            </div>
+
+            <!-- Formulário de Edição (Escondido por padrão) -->
+            <div id="form-perfil" class="edit-form-container" style="display: none;">
+                <h3 style="margin-top: 0;">Atualizar Dados</h3>
+                <input type="text" id="nome" placeholder="Seu Nome (Ex: Thiago)">
+                
+                <select id="cidade">
+                    <option value="">Selecione sua cidade</option>
+                    <option value="Praia Grande">Praia Grande</option>
+                    <option value="São Paulo">São Paulo</option>
+                    <option value="Santos">Santos</option>
+                </select>
+                
+                <input type="file" id="foto" accept="image/*">
+                
+                <div style="display: flex; gap: 10px;">
+                    <button id="btn-salvar" onclick="salvarPerfil()">Salvar Alterações</button>
+                    <button class="btn-edit" onclick="fecharEdicao()">Cancelar</button>
+                </div>
+            </div>
+
+            <!-- Seção Dinâmica de Shoppings -->
+            <h3 style="border-bottom: 1px solid #eee; padding-bottom: 10px;">Locais em <span id="cidade-exibicao">sua região</span></h3>
+            <div class="grid-container" id="grid-shoppings">
+                <!-- Os cartões entrarão aqui via JavaScript -->
+            </div>
         </div>
     </div>
 
@@ -35,8 +65,14 @@
     <script>
         let usuarioAtual = null;
 
+        // Dicionário de Cidades e Shoppings
+        const locaisPorCidade = {
+            "Santos": ["Shopping Supercentro", "Shopping Parque Balneário", "Shopping Miramar"],
+            "São Paulo": ["Shopping Tatuapé", "Shopping Villa Lobos", "Shopping Frei Caneca"],
+            "Praia Grande": ["Shopping Boqueirão", "Litoral Plaza Shopping", "Shopping Vila Mirim"]
+        };
+
         window.onload = async () => {
-            // Usa o clienteSupabase
             const { data: { user } } = await clienteSupabase.auth.getUser();
             
             if (!user) {
@@ -44,11 +80,8 @@
                 return; 
             }
 
-            document.getElementById('corpo-pagina').style.display = 'flex';
-            
+            document.getElementById('corpo-pagina').style.display = 'block';
             usuarioAtual = user;
-            document.getElementById('saudacao').innerText = `Olá, ${user.email}`;
-            
             carregarPerfil(user.id);
         };
 
@@ -56,30 +89,73 @@
             const { data, error } = await clienteSupabase.from('profiles').select('*').eq('id', userId).single();
             
             if (data && data.nome) {
-                document.getElementById('form-perfil').style.display = 'none';
-                document.getElementById('perfil-completo').style.display = 'block';
+                fecharEdicao(); // Esconde o formulário se já tem perfil
                 
+                // Preenche os textos
                 document.getElementById('nome-exibicao').innerText = data.nome;
                 document.getElementById('cidade-exibicao').innerText = data.cidade;
-                document.getElementById('saudacao').innerText = `Olá, ${data.nome}!`;
+                
+                // Preenche o formulário para caso ele queira editar depois
+                document.getElementById('nome').value = data.nome;
+                document.getElementById('cidade').value = data.cidade;
                 
                 if (data.avatar_url) {
                     document.getElementById('foto-exibicao').src = data.avatar_url;
                 }
+
+                // Renderiza os quadrados dinâmicos baseados na cidade
+                renderizarShoppings(data.cidade);
+            } else {
+                // Se é conta nova e não tem perfil, abre o modo edição automaticamente
+                abrirEdicao();
+                document.getElementById('nome-exibicao').innerText = "Novo Usuário";
+                document.getElementById('cidade-exibicao').innerText = "...";
             }
         }
 
+        // Função que cria os quadrados HTML baseados na cidade escolhida
+        function renderizarShoppings(cidade) {
+            const grid = document.getElementById('grid-shoppings');
+            grid.innerHTML = ""; // Limpa cartões anteriores
+
+            const shoppings = locaisPorCidade[cidade];
+
+            if (shoppings && shoppings.length > 0) {
+                shoppings.forEach(shopping => {
+                    // Cria a div do cartão
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerText = shopping;
+                    grid.appendChild(card);
+                });
+            } else {
+                grid.innerHTML = "<p>Nenhum local cadastrado para esta cidade ainda.</p>";
+            }
+        }
+
+        /* --- CONTROLES DE INTERFACE --- */
+        function abrirEdicao() {
+            document.getElementById('form-perfil').style.display = 'block';
+        }
+        function fecharEdicao() {
+            document.getElementById('form-perfil').style.display = 'none';
+        }
+
+        /* --- SALVAR E ATUALIZAR --- */
         async function salvarPerfil() {
             const nome = document.getElementById('nome').value;
             const cidade = document.getElementById('cidade').value;
             const arquivoFoto = document.getElementById('foto').files[0];
             const btn = document.getElementById('btn-salvar');
-            let urlFoto = null;
+            
+            // Mantém a foto antiga caso o usuário não envie uma nova
+            let urlFoto = document.getElementById('foto-exibicao').src;
 
             if (!nome || !cidade) return alert("Preencha nome e cidade!");
 
-            btn.innerText = 'Salvando e enviando foto...';
+            btn.innerText = 'Salvando...';
 
+            // Lógica de Upload de Imagem
             if (arquivoFoto) {
                 const caminho = `${usuarioAtual.id}/${arquivoFoto.name}`;
                 const { data: imgData, error: imgError } = await clienteSupabase.storage.from('avatars').upload(caminho, arquivoFoto, { upsert: true });
@@ -90,19 +166,44 @@
                 }
             }
 
+            // Salva no Banco de Dados
             const { error } = await clienteSupabase.from('profiles').upsert({
                 id: usuarioAtual.id,
                 nome: nome,
                 cidade: cidade,
-                avatar_url: urlFoto
+                avatar_url: urlFoto !== "https://via.placeholder.com/120" ? urlFoto : null
             });
+
+            btn.innerText = 'Salvar Alterações';
 
             if (error) {
                 alert("Erro ao salvar: " + error.message);
-                btn.innerText = 'Salvar Perfil';
             } else {
-                alert("Perfil atualizado com sucesso!");
-                carregarPerfil(usuarioAtual.id);
+                alert("Perfil atualizado!");
+                carregarPerfil(usuarioAtual.id); // Recarrega a tela com os novos dados e novos shoppings
+            }
+        }
+
+        /* --- EXCLUIR E SAIR --- */
+        async function excluirConta() {
+            const confirmar = confirm("Tem certeza? Esta ação apagará sua conta e seus dados para sempre.");
+            if (!confirmar) return;
+
+            try {
+                // 1. Apaga a foto de perfil do storage (opcional, boa prática)
+                await clienteSupabase.storage.from('avatars').remove([`${usuarioAtual.id}`]);
+                
+                // 2. Apaga os dados da tabela profiles
+                await clienteSupabase.from('profiles').delete().eq('id', usuarioAtual.id);
+                
+                // 3. Chama a nossa função SQL para deletar a Autenticação
+                await clienteSupabase.rpc('excluir_minha_conta');
+
+                // 4. Limpa a sessão local e redireciona
+                await clienteSupabase.auth.signOut();
+                window.location.replace('auth.html');
+            } catch (erro) {
+                alert("Erro ao excluir conta: " + erro.message);
             }
         }
 
