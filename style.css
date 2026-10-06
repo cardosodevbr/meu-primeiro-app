@@ -1,3 +1,135 @@
+body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background-color: #e9ecef;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+}
+
+/* Container padrão (usado no index e dashboard) */
+.container {
+    background: white;
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+/* --- TELA DE AUTENTICAÇÃO (Split Screen) --- */
+.auth-container {
+    display: flex;
+    flex-direction: row;
+    max-width: 750px;
+    padding: 0; /* Remove bordas internas para a cor preencher tudo */
+    overflow: hidden;
+    min-height: 450px;
+}
+
+.auth-panel {
+    flex: 1;
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Painel Lateral Azul */
+.auth-left {
+    background-color: #0070f3;
+    color: white;
+}
+.auth-left h2 {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    margin-top: 0;
+}
+.auth-left p {
+    font-size: 0.95rem;
+    margin-bottom: 30px;
+    line-height: 1.5;
+    font-weight: 300;
+}
+
+/* Painel do Formulário Branco */
+.auth-right {
+    background-color: white;
+    color: #333;
+}
+.auth-right h2 {
+    color: #0070f3;
+    font-size: 2.2rem;
+    margin-bottom: 5px;
+    margin-top: 0;
+}
+.auth-right p {
+    color: #888;
+    font-size: 0.85rem;
+    margin-bottom: 25px;
+}
+
+/* Campos de entrada */
+input, select {
+    width: 100%;
+    margin-bottom: 15px;
+    padding: 14px;
+    border: none;
+    background-color: #f0f2f5;
+    border-radius: 5px;
+    box-sizing: border-box;
+    outline: none;
+    font-size: 0.9rem;
+}
+
+/* Botões */
+button {
+    background-color: #0070f3;
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    width: 100%;
+    transition: 0.3s;
+}
+button:hover { background-color: #005bb5; }
+
+.btn-solid {
+    border-radius: 25px;
+    width: auto;
+    padding: 12px 45px;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid white;
+    border-radius: 25px;
+    width: auto;
+    padding: 10px 40px;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+}
+.btn-outline:hover {
+    background: white;
+    color: #0070f3;
+}
+
+/* Responsividade: Empilha em telas menores */
+@media (max-width: 700px) {
+    .auth-container {
+        flex-direction: column;
+    }
+}
+
 /* --- ESTILOS DO DASHBOARD ESTILO NOTION --- */
 .dashboard-wrapper {
     width: 100%;
