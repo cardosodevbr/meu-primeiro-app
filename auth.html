@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Acesso</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Importação da biblioteca do Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -13,79 +12,69 @@
         <input type="email" id="email" placeholder="Seu E-mail" required>
         <input type="password" id="senha" placeholder="Sua Senha (mínimo 6 caracteres)" required>
         
-        <!-- Botão exclusivo para Login -->
         <button onclick="fazerLogin()">Entrar</button>
-        
-        <!-- Botão exclusivo para Cadastro -->
         <button onclick="fazerCadastro()" style="background-color: #28a745; margin-top: 10px;">Criar Nova Conta</button>
         
         <p id="mensagem" style="color: #666; margin-top: 10px;"></p>
     </div>
 
-    <!-- Importa as chaves de conexão -->
     <script src="supabase-config.js"></script>
     
     <script>
-        // Função 1: Apenas entra na conta
         async function fazerLogin() {
             const email = document.getElementById('email').value;
             const senha = document.getElementById('senha').value;
             const msg = document.getElementById('mensagem');
             
-            if(!email || !senha) {
-                msg.style.color = "red";
-                msg.innerText = "Preencha e-mail e senha!";
-                return;
-            }
+            if(!email || !senha) return msg.innerText = "Preencha e-mail e senha!";
 
             msg.style.color = "#0070f3";
             msg.innerText = "Processando login...";
 
-            // Tenta logar
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha });
+            try {
+                // Usa o clienteSupabase
+                const { data, error } = await clienteSupabase.auth.signInWithPassword({ email, password: senha });
 
-            if (error) {
-                // Se der erro, mostra exatamente qual foi o problema
+                if (error) {
+                    msg.style.color = "red";
+                    msg.innerText = "Erro ao entrar: " + error.message;
+                } else {
+                    msg.style.color = "green";
+                    msg.innerText = "Login realizado! Entrando...";
+                    window.location.replace('dashboard.html');
+                }
+            } catch (erroFatal) {
                 msg.style.color = "red";
-                msg.innerText = "Erro ao entrar: " + error.message;
-            } else {
-                msg.style.color = "green";
-                msg.innerText = "Login realizado! Entrando...";
-                window.location.replace('dashboard.html');
+                msg.innerText = "Erro de sistema: " + erroFatal.message;
             }
         }
 
-        // Função 2: Apenas cria a conta
         async function fazerCadastro() {
             const email = document.getElementById('email').value;
             const senha = document.getElementById('senha').value;
             const msg = document.getElementById('mensagem');
             
-            if(!email || !senha) {
-                msg.style.color = "red";
-                msg.innerText = "Preencha e-mail e senha!";
-                return;
-            }
-
-            if(senha.length < 6) {
-                msg.style.color = "red";
-                msg.innerText = "A senha deve ter pelo menos 6 caracteres!";
-                return;
-            }
+            if(!email || !senha) return msg.innerText = "Preencha e-mail e senha!";
+            if(senha.length < 6) return msg.innerText = "A senha deve ter pelo menos 6 caracteres!";
 
             msg.style.color = "#28a745";
             msg.innerText = "Processando cadastro...";
 
-            // Tenta criar a conta
-            const { data, error } = await supabase.auth.signUp({ email, password: senha });
+            try {
+                // Usa o clienteSupabase
+                const { data, error } = await clienteSupabase.auth.signUp({ email, password: senha });
 
-            if (error) {
+                if (error) {
+                    msg.style.color = "red";
+                    msg.innerText = "Erro ao criar: " + error.message;
+                } else {
+                    msg.style.color = "green";
+                    msg.innerText = "Conta criada com sucesso! Entrando...";
+                    window.location.replace('dashboard.html');
+                }
+            } catch (erroFatal) {
                 msg.style.color = "red";
-                msg.innerText = "Erro ao criar: " + error.message;
-            } else {
-                msg.style.color = "green";
-                msg.innerText = "Conta criada com sucesso! Entrando...";
-                window.location.replace('dashboard.html');
+                msg.innerText = "Erro de sistema: " + erroFatal.message;
             }
         }
     </script>

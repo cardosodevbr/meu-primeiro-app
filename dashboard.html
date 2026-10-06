@@ -6,7 +6,6 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<!-- ⚠️ PROTEÇÃO: A página começa invisível. O JS libera caso tenha login válido. -->
 <body id="corpo-pagina" style="display: none;">
     <div class="container">
         <h2 id="saudacao">Carregando...</h2>
@@ -37,15 +36,14 @@
         let usuarioAtual = null;
 
         window.onload = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
+            // Usa o clienteSupabase
+            const { data: { user } } = await clienteSupabase.auth.getUser();
             
-            // Se não há usuário logado, manda pro login IMEDIATAMENTE e interrompe
             if (!user) {
                 window.location.replace('auth.html');
                 return; 
             }
 
-            // Tem login? Perfeito, vamos exibir o corpo da página!
             document.getElementById('corpo-pagina').style.display = 'flex';
             
             usuarioAtual = user;
@@ -55,7 +53,7 @@
         };
 
         async function carregarPerfil(userId) {
-            const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+            const { data, error } = await clienteSupabase.from('profiles').select('*').eq('id', userId).single();
             
             if (data && data.nome) {
                 document.getElementById('form-perfil').style.display = 'none';
@@ -84,15 +82,15 @@
 
             if (arquivoFoto) {
                 const caminho = `${usuarioAtual.id}/${arquivoFoto.name}`;
-                const { data: imgData, error: imgError } = await supabase.storage.from('avatars').upload(caminho, arquivoFoto, { upsert: true });
+                const { data: imgData, error: imgError } = await clienteSupabase.storage.from('avatars').upload(caminho, arquivoFoto, { upsert: true });
                 
                 if (!imgError) {
-                    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(caminho);
+                    const { data: { publicUrl } } = clienteSupabase.storage.from('avatars').getPublicUrl(caminho);
                     urlFoto = publicUrl;
                 }
             }
 
-            const { error } = await supabase.from('profiles').upsert({
+            const { error } = await clienteSupabase.from('profiles').upsert({
                 id: usuarioAtual.id,
                 nome: nome,
                 cidade: cidade,
@@ -108,9 +106,8 @@
             }
         }
 
-        // Função para sair da conta e bloquear a página novamente
         async function sair() {
-            await supabase.auth.signOut();
+            await clienteSupabase.auth.signOut();
             window.location.replace('auth.html');
         }
     </script>
