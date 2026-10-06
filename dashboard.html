@@ -2,30 +2,60 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meu Dashboard</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body id="corpo-pagina" style="display: none; background-color: #f4f4f9;">
+<!-- A página inteira inicia escondida para evitar "piscos" na tela antes do banco de dados responder -->
+<body id="corpo-pagina" style="display: none; background-color: #f4f4f9; margin: 0;">
     
-    <div class="dashboard-wrapper">
-        <!-- Capa -->
-        <div class="cover-image"></div>
+    <!-- ========================================== -->
+    <!-- VIEW 1: TELA ISOLADA DE PERFIL (UX/UI)     -->
+    <!-- ========================================== -->
+    <div id="view-perfil" class="view-perfil" style="display: none;">
+        <div class="perfil-card">
+            <h2 id="titulo-perfil">Complete seu Cadastro</h2>
+            <p id="subtitulo-perfil">Precisamos de mais alguns dados.</p>
+            
+            <input type="text" id="nome" placeholder="Seu Nome">
+            
+            <select id="cidade">
+                <option value="">Selecione sua cidade</option>
+                <option value="Praia Grande">Praia Grande</option>
+                <option value="São Paulo">São Paulo</option>
+                <option value="Santos">Santos</option>
+            </select>
+            
+            <!-- Texto instrutivo para a foto -->
+            <p style="font-size: 0.8rem; text-align: left; margin-bottom: 5px; color: #555;">Foto de Perfil:</p>
+            <input type="file" id="foto" accept="image/*">
+            
+            <button class="btn-solid" id="btn-salvar" style="width: 100%;" onclick="salvarPerfil()">Salvar Perfil</button>
+            <!-- Este botão fica escondido se for o primeiro cadastro -->
+            <button class="btn-cancelar" id="btn-cancelar" onclick="fecharEdicao()">Cancelar</button>
+        </div>
+    </div>
 
-        <!-- Seção do Perfil -->
+
+    <!-- ========================================== -->
+    <!-- VIEW 2: DASHBOARD NOTION (PAINEL PRINCIPAL)-->
+    <!-- ========================================== -->
+    <div id="view-dashboard" class="dashboard-wrapper" style="display: none;">
+        
+        <div class="cover-image"></div> <!-- Capa Escura -->
+
         <div class="profile-section">
             <div class="avatar-container">
-                <img id="foto-exibicao" src="https://via.placeholder.com/120" alt="Avatar">
+                <img id="foto-exibicao" src="https://via.placeholder.com/120" alt="Sua Foto">
             </div>
             <div class="profile-actions">
-                <button class="btn-edit" onclick="abrirEdicao()">Editar Perfil</button>
+                <!-- O botão Editar agora chama a função sem a trava de "Obrigatório" -->
+                <button class="btn-edit" onclick="abrirEdicao(false)">Editar Perfil</button>
                 <button class="btn-danger" onclick="excluirConta()">Excluir Conta</button>
                 <button class="btn-edit" onclick="sair()">Sair</button>
             </div>
         </div>
 
-        <!-- Conteúdo -->
         <div class="dashboard-content">
             <h1 id="nome-exibicao">Carregando...</h1>
             
@@ -33,39 +63,18 @@
                 💡 "Esforce-se para não ser um sucesso, mas sim para ser valioso." - Albert Einstein
             </div>
 
-            <!-- Formulário de Edição (Escondido por padrão) -->
-            <div id="form-perfil" class="edit-form-container" style="display: none;">
-                <h3 style="margin-top: 0;">Atualizar Dados</h3>
-                <input type="text" id="nome" placeholder="Seu Nome (Ex: Thiago)">
-                
-                <select id="cidade">
-                    <option value="">Selecione sua cidade</option>
-                    <option value="Praia Grande">Praia Grande</option>
-                    <option value="São Paulo">São Paulo</option>
-                    <option value="Santos">Santos</option>
-                </select>
-                
-                <input type="file" id="foto" accept="image/*">
-                
-                <div style="display: flex; gap: 10px;">
-                    <button id="btn-salvar" onclick="salvarPerfil()">Salvar Alterações</button>
-                    <button class="btn-edit" onclick="fecharEdicao()">Cancelar</button>
-                </div>
-            </div>
-
-            <!-- Seção Dinâmica de Shoppings -->
-            <h3 style="border-bottom: 1px solid #eee; padding-bottom: 10px;">Locais em <span id="cidade-exibicao">sua região</span></h3>
-            <div class="grid-container" id="grid-shoppings">
-                <!-- Os cartões entrarão aqui via JavaScript -->
-            </div>
+            <h3 style="border-bottom: 1px solid #eee; padding-bottom: 10px;">Shoppings em <span id="cidade-exibicao">sua região</span></h3>
+            
+            <!-- Área Dinâmica dos Cartões -->
+            <div class="grid-container" id="grid-shoppings"></div>
         </div>
     </div>
 
+    <!-- Nossos Códigos e Conexões -->
     <script src="supabase-config.js"></script>
     <script>
         let usuarioAtual = null;
 
-        // Dicionário de Cidades e Shoppings
         const locaisPorCidade = {
             "Santos": ["Shopping Supercentro", "Shopping Parque Balneário", "Shopping Miramar"],
             "São Paulo": ["Shopping Tatuapé", "Shopping Villa Lobos", "Shopping Frei Caneca"],
@@ -80,85 +89,104 @@
                 return; 
             }
 
+            // A pessoa está logada! Liberamos o corpo da página, mas o JS vai decidir qual view exibir.
             document.getElementById('corpo-pagina').style.display = 'block';
-            usuarioAtual = user;
+            usuarioAtual = user; 
+            
             carregarPerfil(user.id);
         };
 
         async function carregarPerfil(userId) {
             const { data, error } = await clienteSupabase.from('profiles').select('*').eq('id', userId).single();
             
+            // SE O PERFIL JÁ EXISTE NO BANCO:
             if (data && data.nome) {
-                fecharEdicao(); // Esconde o formulário se já tem perfil
-                
-                // Preenche os textos
+                // Preenche os textos do Dashboard
                 document.getElementById('nome-exibicao').innerText = data.nome;
                 document.getElementById('cidade-exibicao').innerText = data.cidade;
-                
-                // Preenche o formulário para caso ele queira editar depois
+                if (data.avatar_url) document.getElementById('foto-exibicao').src = data.avatar_url;
+
+                // Preenche os campos do formulário para edição futura
                 document.getElementById('nome').value = data.nome;
                 document.getElementById('cidade').value = data.cidade;
                 
-                if (data.avatar_url) {
-                    document.getElementById('foto-exibicao').src = data.avatar_url;
-                }
-
-                // Renderiza os quadrados dinâmicos baseados na cidade
                 renderizarShoppings(data.cidade);
+                
+                // Manda mostrar o Dashboard e esconder o formulário
+                fecharEdicao(); 
             } else {
-                // Se é conta nova e não tem perfil, abre o modo edição automaticamente
-                abrirEdicao();
-                document.getElementById('nome-exibicao').innerText = "Novo Usuário";
-                document.getElementById('cidade-exibicao').innerText = "...";
+                // SE A CONTA É NOVA (Não tem perfil):
+                // Chama a função abrirEdicao passando "true" (significa que é obrigatório preencher)
+                abrirEdicao(true);
             }
         }
 
-        // Função que cria os quadrados HTML baseados na cidade escolhida
+        // -------------------------------------------------------------
+        // LOGICA DE NAVEGAÇÃO ENTRE TELAS (Views)
+        // -------------------------------------------------------------
+
+        // Função que esconde o Dashboard e exibe a Tela de Perfil Isolada
+        // O parâmetro 'obrigatorio' verifica se a pessoa está apenas editando ou se é o 1º cadastro.
+        function abrirEdicao(obrigatorio = false) {
+            // Esconde o Painel
+            document.getElementById('view-dashboard').style.display = 'none';
+            // Exibe a tela de Perfil
+            document.getElementById('view-perfil').style.display = 'flex';
+            
+            if (obrigatorio) {
+                // 1º Cadastro: Muda textos e esconde botão cancelar
+                document.getElementById('titulo-perfil').innerText = "Complete seu Cadastro";
+                document.getElementById('subtitulo-perfil').innerText = "Para continuar, precisamos de mais alguns dados.";
+                document.getElementById('btn-cancelar').style.display = 'none';
+            } else {
+                // Edição de Perfil: Muda textos e mostra botão cancelar
+                document.getElementById('titulo-perfil').innerText = "Editar Perfil";
+                document.getElementById('subtitulo-perfil').innerText = "Atualize suas informações abaixo.";
+                document.getElementById('btn-cancelar').style.display = 'block';
+            }
+        }
+
+        // Função que esconde a Tela de Perfil e volta pro Dashboard
+        function fecharEdicao() {
+            document.getElementById('view-perfil').style.display = 'none';
+            document.getElementById('view-dashboard').style.display = 'block';
+        }
+
+        // -------------------------------------------------------------
+        // FUNÇÕES DO BANCO DE DADOS E LÓGICA DE NEGÓCIO
+        // -------------------------------------------------------------
+
         function renderizarShoppings(cidade) {
             const grid = document.getElementById('grid-shoppings');
-            grid.innerHTML = ""; // Limpa cartões anteriores
+            grid.innerHTML = ""; 
 
             const shoppings = locaisPorCidade[cidade];
 
-            if (shoppings && shoppings.length > 0) {
+            if (shoppings) {
                 shoppings.forEach(shopping => {
-                    // Cria a div do cartão
                     const card = document.createElement('div');
                     card.className = 'card';
                     card.innerText = shopping;
-                    grid.appendChild(card);
+                    grid.appendChild(card); 
                 });
-            } else {
-                grid.innerHTML = "<p>Nenhum local cadastrado para esta cidade ainda.</p>";
             }
         }
 
-        /* --- CONTROLES DE INTERFACE --- */
-        function abrirEdicao() {
-            document.getElementById('form-perfil').style.display = 'block';
-        }
-        function fecharEdicao() {
-            document.getElementById('form-perfil').style.display = 'none';
-        }
-
-        /* --- SALVAR E ATUALIZAR --- */
         async function salvarPerfil() {
             const nome = document.getElementById('nome').value;
             const cidade = document.getElementById('cidade').value;
             const arquivoFoto = document.getElementById('foto').files[0];
             const btn = document.getElementById('btn-salvar');
             
-            // Mantém a foto antiga caso o usuário não envie uma nova
-            let urlFoto = document.getElementById('foto-exibicao').src;
+            let urlFoto = document.getElementById('foto-exibicao').src; 
 
             if (!nome || !cidade) return alert("Preencha nome e cidade!");
 
             btn.innerText = 'Salvando...';
 
-            // Lógica de Upload de Imagem
             if (arquivoFoto) {
                 const caminho = `${usuarioAtual.id}/${arquivoFoto.name}`;
-                const { data: imgData, error: imgError } = await clienteSupabase.storage.from('avatars').upload(caminho, arquivoFoto, { upsert: true });
+                const { error: imgError } = await clienteSupabase.storage.from('avatars').upload(caminho, arquivoFoto, { upsert: true });
                 
                 if (!imgError) {
                     const { data: { publicUrl } } = clienteSupabase.storage.from('avatars').getPublicUrl(caminho);
@@ -166,7 +194,6 @@
                 }
             }
 
-            // Salva no Banco de Dados
             const { error } = await clienteSupabase.from('profiles').upsert({
                 id: usuarioAtual.id,
                 nome: nome,
@@ -174,43 +201,15 @@
                 avatar_url: urlFoto !== "https://via.placeholder.com/120" ? urlFoto : null
             });
 
-            btn.innerText = 'Salvar Alterações';
+            btn.innerText = 'Salvar Perfil';
 
-            if (error) {
-                alert("Erro ao salvar: " + error.message);
-            } else {
-                alert("Perfil atualizado!");
-                carregarPerfil(usuarioAtual.id); // Recarrega a tela com os novos dados e novos shoppings
+            if (error) alert("Erro: " + error.message);
+            else {
+                // A função carregarPerfil vai ler os dados novos e automaticamente chamar a função fecharEdicao()
+                carregarPerfil(usuarioAtual.id); 
             }
         }
 
-        /* --- EXCLUIR E SAIR --- */
         async function excluirConta() {
-            const confirmar = confirm("Tem certeza? Esta ação apagará sua conta e seus dados para sempre.");
+            const confirmar = confirm("Tem certeza? Esta ação apagará sua conta e dados.");
             if (!confirmar) return;
-
-            try {
-                // 1. Apaga a foto de perfil do storage (opcional, boa prática)
-                await clienteSupabase.storage.from('avatars').remove([`${usuarioAtual.id}`]);
-                
-                // 2. Apaga os dados da tabela profiles
-                await clienteSupabase.from('profiles').delete().eq('id', usuarioAtual.id);
-                
-                // 3. Chama a nossa função SQL para deletar a Autenticação
-                await clienteSupabase.rpc('excluir_minha_conta');
-
-                // 4. Limpa a sessão local e redireciona
-                await clienteSupabase.auth.signOut();
-                window.location.replace('auth.html');
-            } catch (erro) {
-                alert("Erro ao excluir conta: " + erro.message);
-            }
-        }
-
-        async function sair() {
-            await clienteSupabase.auth.signOut();
-            window.location.replace('auth.html');
-        }
-    </script>
-</body>
-</html>
