@@ -6,9 +6,23 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<!-- A página inteira inicia escondida para evitar "piscos" na tela antes do banco de dados responder -->
-<body id="corpo-pagina" style="display: none; background-color: #f4f4f9; margin: 0;">
+<body style="background-color: #f4f4f9; margin: 0;">
     
+    <!-- ========================================== -->
+    <!-- TELA DE CARREGAMENTO E ERRO SEGURA         -->
+    <!-- ========================================== -->
+    <div id="tela-carregamento" style="display: flex; height: 100vh; justify-content: center; align-items: center; flex-direction: column;">
+        <h2 style="color: #0070f3;">Carregando seu painel...</h2>
+        <p>Conectando ao banco de dados</p>
+    </div>
+
+    <div id="tela-erro" style="display: none; height: 100vh; justify-content: center; align-items: center; flex-direction: column; text-align: center; padding: 20px;">
+        <h2 style="color: #dc3545;">Ops! Ocorreu um erro oculto.</h2>
+        <p id="msg-erro" style="color: #555; background: #fff; padding: 15px; border-radius: 5px; border: 1px solid #ddd;"></p>
+        <button class="btn-solid" onclick="window.location.reload()" style="margin-top: 20px;">Tentar Novamente</button>
+        <button class="btn-cancelar" onclick="window.location.replace('auth.html')" style="width: auto; margin-top: 10px;">Voltar para o Login</button>
+    </div>
+
     <!-- ========================================== -->
     <!-- VIEW 1: TELA ISOLADA DE PERFIL (UX/UI)     -->
     <!-- ========================================== -->
@@ -26,30 +40,24 @@
                 <option value="Santos">Santos</option>
             </select>
             
-            <!-- Texto instrutivo para a foto -->
             <p style="font-size: 0.8rem; text-align: left; margin-bottom: 5px; color: #555;">Foto de Perfil:</p>
             <input type="file" id="foto" accept="image/*">
             
             <button class="btn-solid" id="btn-salvar" style="width: 100%;" onclick="salvarPerfil()">Salvar Perfil</button>
-            <!-- Este botão fica escondido se for o primeiro cadastro -->
             <button class="btn-cancelar" id="btn-cancelar" onclick="fecharEdicao()">Cancelar</button>
         </div>
     </div>
-
 
     <!-- ========================================== -->
     <!-- VIEW 2: DASHBOARD NOTION (PAINEL PRINCIPAL)-->
     <!-- ========================================== -->
     <div id="view-dashboard" class="dashboard-wrapper" style="display: none;">
-        
-        <div class="cover-image"></div> <!-- Capa Escura -->
-
+        <div class="cover-image"></div>
         <div class="profile-section">
             <div class="avatar-container">
                 <img id="foto-exibicao" src="https://via.placeholder.com/120" alt="Sua Foto">
             </div>
             <div class="profile-actions">
-                <!-- O botão Editar agora chama a função sem a trava de "Obrigatório" -->
                 <button class="btn-edit" onclick="abrirEdicao(false)">Editar Perfil</button>
                 <button class="btn-danger" onclick="excluirConta()">Excluir Conta</button>
                 <button class="btn-edit" onclick="sair()">Sair</button>
@@ -58,14 +66,8 @@
 
         <div class="dashboard-content">
             <h1 id="nome-exibicao">Carregando...</h1>
-            
-            <div class="quote-box">
-                💡 "Esforce-se para não ser um sucesso, mas sim para ser valioso." - Albert Einstein
-            </div>
-
-            <h3 style="border-bottom: 1px solid #eee; padding-bottom: 10px;">Shoppings em <span id="cidade-exibicao">sua região</span></h3>
-            
-            <!-- Área Dinâmica dos Cartões -->
+            <div class="quote-box">💡 "Esforce-se para não ser um sucesso, mas sim para ser valioso." - Albert Einstein</div>
+            <h3 style="border-bottom: 1px solid #eee; padding-bottom: 10px;">Locais em <span id="cidade-exibicao">sua região</span></h3>
             <div class="grid-container" id="grid-shoppings"></div>
         </div>
     </div>
@@ -82,86 +84,76 @@
         };
 
         window.onload = async () => {
-            const { data: { user } } = await clienteSupabase.auth.getUser();
-            
-            if (!user) {
-                window.location.replace('auth.html');
-                return; 
-            }
+            // O try...catch captura qualquer falha e joga para a tela de erro
+            try {
+                // Valida se o arquivo de configuração conectou corretamente
+                if (typeof clienteSupabase === 'undefined') {
+                    throw new Error("O arquivo supabase-config.js não carregou ou tem um erro de digitação.");
+                }
 
-            // A pessoa está logada! Liberamos o corpo da página, mas o JS vai decidir qual view exibir.
-            document.getElementById('corpo-pagina').style.display = 'block';
-            usuarioAtual = user; 
-            
-            carregarPerfil(user.id);
+                const { data: { user }, error: authError } = await clienteSupabase.auth.getUser();
+                
+                if (authError || !user) {
+                    window.location.replace('auth.html');
+                    return; 
+                }
+
+                usuarioAtual = user; 
+                
+                // Oculta a tela de carregamento e vai buscar os dados
+                document.getElementById('tela-carregamento').style.display = 'none';
+                await carregarPerfil(user.id);
+
+            } catch (erro) {
+                // Se o código quebrar, exibe a tela de erro e imprime o motivo na tela!
+                document.getElementById('tela-carregamento').style.display = 'none';
+                document.getElementById('tela-erro').style.display = 'flex';
+                document.getElementById('msg-erro').innerText = "Erro técnico: " + erro.message;
+            }
         };
 
         async function carregarPerfil(userId) {
             const { data, error } = await clienteSupabase.from('profiles').select('*').eq('id', userId).single();
             
-            // SE O PERFIL JÁ EXISTE NO BANCO:
             if (data && data.nome) {
-                // Preenche os textos do Dashboard
                 document.getElementById('nome-exibicao').innerText = data.nome;
                 document.getElementById('cidade-exibicao').innerText = data.cidade;
                 if (data.avatar_url) document.getElementById('foto-exibicao').src = data.avatar_url;
 
-                // Preenche os campos do formulário para edição futura
                 document.getElementById('nome').value = data.nome;
                 document.getElementById('cidade').value = data.cidade;
                 
                 renderizarShoppings(data.cidade);
-                
-                // Manda mostrar o Dashboard e esconder o formulário
                 fecharEdicao(); 
             } else {
-                // SE A CONTA É NOVA (Não tem perfil):
-                // Chama a função abrirEdicao passando "true" (significa que é obrigatório preencher)
                 abrirEdicao(true);
             }
         }
 
-        // -------------------------------------------------------------
-        // LOGICA DE NAVEGAÇÃO ENTRE TELAS (Views)
-        // -------------------------------------------------------------
-
-        // Função que esconde o Dashboard e exibe a Tela de Perfil Isolada
-        // O parâmetro 'obrigatorio' verifica se a pessoa está apenas editando ou se é o 1º cadastro.
         function abrirEdicao(obrigatorio = false) {
-            // Esconde o Painel
             document.getElementById('view-dashboard').style.display = 'none';
-            // Exibe a tela de Perfil
             document.getElementById('view-perfil').style.display = 'flex';
             
             if (obrigatorio) {
-                // 1º Cadastro: Muda textos e esconde botão cancelar
                 document.getElementById('titulo-perfil').innerText = "Complete seu Cadastro";
                 document.getElementById('subtitulo-perfil').innerText = "Para continuar, precisamos de mais alguns dados.";
                 document.getElementById('btn-cancelar').style.display = 'none';
             } else {
-                // Edição de Perfil: Muda textos e mostra botão cancelar
                 document.getElementById('titulo-perfil').innerText = "Editar Perfil";
                 document.getElementById('subtitulo-perfil').innerText = "Atualize suas informações abaixo.";
                 document.getElementById('btn-cancelar').style.display = 'block';
             }
         }
 
-        // Função que esconde a Tela de Perfil e volta pro Dashboard
         function fecharEdicao() {
             document.getElementById('view-perfil').style.display = 'none';
             document.getElementById('view-dashboard').style.display = 'block';
         }
 
-        // -------------------------------------------------------------
-        // FUNÇÕES DO BANCO DE DADOS E LÓGICA DE NEGÓCIO
-        // -------------------------------------------------------------
-
         function renderizarShoppings(cidade) {
             const grid = document.getElementById('grid-shoppings');
             grid.innerHTML = ""; 
-
             const shoppings = locaisPorCidade[cidade];
-
             if (shoppings) {
                 shoppings.forEach(shopping => {
                     const card = document.createElement('div');
@@ -187,7 +179,6 @@
             if (arquivoFoto) {
                 const caminho = `${usuarioAtual.id}/${arquivoFoto.name}`;
                 const { error: imgError } = await clienteSupabase.storage.from('avatars').upload(caminho, arquivoFoto, { upsert: true });
-                
                 if (!imgError) {
                     const { data: { publicUrl } } = clienteSupabase.storage.from('avatars').getPublicUrl(caminho);
                     urlFoto = publicUrl;
@@ -204,12 +195,27 @@
             btn.innerText = 'Salvar Perfil';
 
             if (error) alert("Erro: " + error.message);
-            else {
-                // A função carregarPerfil vai ler os dados novos e automaticamente chamar a função fecharEdicao()
-                carregarPerfil(usuarioAtual.id); 
-            }
+            else carregarPerfil(usuarioAtual.id); 
         }
 
         async function excluirConta() {
             const confirmar = confirm("Tem certeza? Esta ação apagará sua conta e dados.");
             if (!confirmar) return;
+            try {
+                await clienteSupabase.storage.from('avatars').remove([`${usuarioAtual.id}`]);
+                await clienteSupabase.from('profiles').delete().eq('id', usuarioAtual.id);
+                await clienteSupabase.rpc('excluir_minha_conta');
+                await clienteSupabase.auth.signOut();
+                window.location.replace('auth.html');
+            } catch (erro) {
+                alert("Erro ao excluir conta: " + erro.message);
+            }
+        }
+
+        async function sair() {
+            await clienteSupabase.auth.signOut();
+            window.location.replace('auth.html');
+        }
+    </script>
+</body>
+</html>
