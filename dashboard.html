@@ -45,6 +45,10 @@
             
             <button class="btn-solid" id="btn-salvar" style="width: 100%;" onclick="salvarPerfil()">Salvar Perfil</button>
             <button class="btn-cancelar" id="btn-cancelar" onclick="fecharEdicao()">Cancelar</button>
+            
+            <!-- Linha divisória e o Botão de Excluir Conta (Movido para cá) -->
+            <hr id="linha-excluir" style="border: 0; border-top: 1px solid #eee; margin: 25px 0 15px 0;">
+            <button class="btn-danger" id="btn-excluir" style="width: 100%; padding: 12px; border-radius: 25px;" onclick="excluirConta()">Excluir Conta Definitivamente</button>
         </div>
     </div>
 
@@ -59,7 +63,7 @@
             </div>
             <div class="profile-actions">
                 <button class="btn-edit" onclick="abrirEdicao(false)">Editar Perfil</button>
-                <button class="btn-danger" onclick="excluirConta()">Excluir Conta</button>
+                <!-- O botão "Excluir Conta" foi removido daqui para deixar o painel mais limpo -->
                 <button class="btn-edit" onclick="sair()">Sair</button>
             </div>
         </div>
@@ -84,9 +88,7 @@
         };
 
         window.onload = async () => {
-            // O try...catch captura qualquer falha e joga para a tela de erro
             try {
-                // Valida se o arquivo de configuração conectou corretamente
                 if (typeof clienteSupabase === 'undefined') {
                     throw new Error("O arquivo supabase-config.js não carregou ou tem um erro de digitação.");
                 }
@@ -99,13 +101,10 @@
                 }
 
                 usuarioAtual = user; 
-                
-                // Oculta a tela de carregamento e vai buscar os dados
                 document.getElementById('tela-carregamento').style.display = 'none';
                 await carregarPerfil(user.id);
 
             } catch (erro) {
-                // Se o código quebrar, exibe a tela de erro e imprime o motivo na tela!
                 document.getElementById('tela-carregamento').style.display = 'none';
                 document.getElementById('tela-erro').style.display = 'flex';
                 document.getElementById('msg-erro').innerText = "Erro técnico: " + erro.message;
@@ -130,18 +129,28 @@
             }
         }
 
+        // --- ATUALIZAÇÃO IMPORTANTE AQUI ---
         function abrirEdicao(obrigatorio = false) {
             document.getElementById('view-dashboard').style.display = 'none';
             document.getElementById('view-perfil').style.display = 'flex';
             
             if (obrigatorio) {
+                // Se for o 1º acesso, o usuário é obrigado a preencher.
+                // Escondemos Cancelar e a opção de Excluir Conta.
                 document.getElementById('titulo-perfil').innerText = "Complete seu Cadastro";
                 document.getElementById('subtitulo-perfil').innerText = "Para continuar, precisamos de mais alguns dados.";
+                
                 document.getElementById('btn-cancelar').style.display = 'none';
+                document.getElementById('btn-excluir').style.display = 'none';
+                document.getElementById('linha-excluir').style.display = 'none';
             } else {
+                // Se for apenas edição, mostramos todas as opções de controle de conta.
                 document.getElementById('titulo-perfil').innerText = "Editar Perfil";
-                document.getElementById('subtitulo-perfil').innerText = "Atualize suas informações abaixo.";
+                document.getElementById('subtitulo-perfil').innerText = "Atualize ou gerencie suas informações.";
+                
                 document.getElementById('btn-cancelar').style.display = 'block';
+                document.getElementById('btn-excluir').style.display = 'block';
+                document.getElementById('linha-excluir').style.display = 'block';
             }
         }
 
@@ -199,23 +208,4 @@
         }
 
         async function excluirConta() {
-            const confirmar = confirm("Tem certeza? Esta ação apagará sua conta e dados.");
-            if (!confirmar) return;
-            try {
-                await clienteSupabase.storage.from('avatars').remove([`${usuarioAtual.id}`]);
-                await clienteSupabase.from('profiles').delete().eq('id', usuarioAtual.id);
-                await clienteSupabase.rpc('excluir_minha_conta');
-                await clienteSupabase.auth.signOut();
-                window.location.replace('auth.html');
-            } catch (erro) {
-                alert("Erro ao excluir conta: " + erro.message);
-            }
-        }
-
-        async function sair() {
-            await clienteSupabase.auth.signOut();
-            window.location.replace('auth.html');
-        }
-    </script>
-</body>
-</html>
+            const confirmar = confirm("Tem certeza? Esta ação apagará sua
